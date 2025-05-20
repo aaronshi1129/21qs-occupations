@@ -1,0 +1,814 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>21 Questions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            min-height: 100vh;
+        }
+        
+        .card-container {
+            perspective: 1000px;
+            height: 120px; /* Base height */
+        }
+        
+        .card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 0.75rem;
+        }
+        
+        .card-front {
+            background-color: white;
+        }
+        
+        .card-back {
+            background-color: #e0e7ff;
+            transform: rotateY(180deg);
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: confetti-fall 3s ease-in-out infinite;
+        }
+        
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+        
+        .selected-indicator {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .star {
+            display: inline-block;
+            font-size: 2rem;
+            color: #d1d5db; /* gray-300 */
+            transition: color 0.3s;
+        }
+        
+        .star.filled {
+            color: #fbbf24; /* amber-400 */
+            animation: star-pop 0.5s ease-out;
+        }
+        
+        @keyframes star-pop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Custom container width */
+        .game-container {
+            width: 80%;
+            max-width: 1400px; /* Increased max-width */
+        }
+        
+        /* Responsive font sizes for cards */
+        @media (min-width: 768px) {
+            .card-text {
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (min-width: 1280px) {
+            .card-text {
+                font-size: 1rem;
+            }
+            
+            .card-container {
+                height: 140px; /* Larger height for XL screens */
+            }
+        }
+        
+        @media (min-width: 1536px) {
+            .card-text {
+                font-size: 1.1rem;
+            }
+            
+            .card-container {
+                height: 150px; /* Even larger height for 2XL screens */
+            }
+            
+            .game-container {
+                max-width: 1600px; /* Wider container on 2XL screens */
+            }
+        }
+        
+        @media (max-width: 767px) {
+            .card-text {
+                font-size: 0.85rem;
+            }
+            
+            .game-container {
+                width: 95%;
+            }
+        }
+        
+        /* Toast notification */
+        .toast-message {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z6V4ZXXZXS"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-Z6V4ZXXZXS');
+</script>
+<body class="p-4 flex justify-center items-center min-h-screen" id="game-body">
+    <!-- Audio element for correct answer sound -->
+    <audio id="correct-sound" src="correct.mp3" preload="auto"></audio>
+
+    <div class="game-container mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+        <!-- Home page -->
+        <div id="home-page" class="p-4 md:p-6">
+            <div class="text-center mb-6">
+                <h1 class="text-4xl font-bold text-indigo-800 mb-4">21 Questions (Occupations)
+                </h1>
+                <p class="text-xl text-gray-600">Test your deduction skills!</p>
+            </div>
+            
+            <div class="space-y-6 mb-8">
+                <div class="bg-indigo-50 p-5 rounded-lg slide-in" style="animation-delay: 0.1s">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-3">How to Play</h2>
+                    <ul class="space-y-3 text-gray-700">
+                        <li class="flex items-start">
+                            <span class="text-indigo-600 font-bold mr-2">1.</span>
+                            <span>A mystery occupation has been selected.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-indigo-600 font-bold mr-2">2.</span>
+                            <span>Tap on question cards to reveal answers about the occupation.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-indigo-600 font-bold mr-2">3.</span>
+                            <span>After revealing some questions, try to guess the occupation.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-indigo-600 font-bold mr-2">4.</span>
+                            <span>The fewer questions you need, the more stars you'll earn!</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="bg-amber-50 p-5 rounded-lg slide-in" style="animation-delay: 0.2s">
+                    <h2 class="text-2xl font-semibold text-amber-700 mb-3">Star Rating System</h2>
+                    <div class="flex items-center justify-center space-x-8 py-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <span class="star filled">★</span>
+                                <span class="star filled">★</span>
+                                <span class="star filled">★</span>
+                            </div>
+                            <p class="font-medium">1-7 questions</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <span class="star filled">★</span>
+                                <span class="star filled">★</span>
+                                <span class="star">★</span>
+                            </div>
+                            <p class="font-medium">8-14 questions</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <span class="star filled">★</span>
+                                <span class="star">★</span>
+                                <span class="star">★</span>
+                            </div>
+                            <p class="font-medium">15-21 questions</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 p-5 rounded-lg slide-in" style="animation-delay: 0.3s">
+                    <h2 class="text-2xl font-semibold text-green-700 mb-3">Tips</h2>
+                    <ul class="space-y-2 text-gray-700">
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-2">•</span>
+                            <span>Choose your questions strategically to narrow down possibilities.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-2">•</span>
+                            <span>After 7 questions, a hint will appear to help you.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-2">•</span>
+                            <span>Type your guess exactly (not case sensitive).</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <button id="start-game" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-8 rounded-lg transition-colors text-xl pulse">
+                    Start Game
+                </button>
+            </div>
+        </div>
+        
+        <!-- Game page -->
+        <div id="game-page" class="p-4 md:p-6 hidden">
+            <div class="text-center mb-5">
+                <h1 class="text-3xl font-bold text-indigo-800">Occupation Guessing Game</h1>
+                <p class="text-gray-600 mt-2">Reveal questions to help you guess the occupation!</p>
+                <div class="mt-3 flex justify-center items-center space-x-4">
+                    <span class="text-sm bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full">
+                        Questions revealed: <span id="selected-count" class="font-bold">0</span>/21
+                    </span>
+                    <div class="stars-container">
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-500">
+                    <span>3 stars: ≤7 questions</span> • 
+                    <span>2 stars: ≤14 questions</span> • 
+                    <span>1 star: ≤21 questions</span>
+                </div>
+            </div>
+            
+            <!-- Input area above -->
+            <div class="mb-6 p-4 bg-indigo-50 rounded-lg">
+                <div id="hint-container" class="mb-4 text-center hidden">
+                    <p class="text-indigo-800 font-medium">Hint: <span id="hint-text"></span></p>
+                </div>
+                <div class="flex flex-col md:flex-row items-center gap-4">
+                    <input type="text" id="guess-input" placeholder="Type your guess here..." 
+                           class="flex-grow p-3 border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button id="submit-guess" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-6 rounded-lg transition-colors">
+                        Submit Guess
+                    </button>
+                </div>
+                <div id="result-container" class="mt-4 text-center hidden">
+                    <p id="result-text" class="text-xl font-bold"></p>
+                    <div id="star-rating" class="my-3">
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                        <span class="star">★</span>
+                    </div>
+                    <div class="flex justify-center space-x-4 mt-4">
+                        <button id="play-again" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            Play Again
+                        </button>
+                        <button id="back-to-home" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            Back to Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-3" id="questions-container">
+                <!-- Questions will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const occupations = [
+                {
+                    name: "Doctor",
+                    answers: {
+                        "Do they work indoors?": "Yes",
+                        "Do they need a college degree?": "Yes",
+                        "Do they work with their hands?": "Yes",
+                        "Do they wear a uniform?": "Yes",
+                        "Do they work with technology?": "Yes",
+                        "Do they work with children?": "Sometimes",
+                        "Is their job dangerous?": "Can be",
+                        "Do they work in teams?": "Yes",
+                        "Do they need special certification?": "Yes",
+                        "Do they work nights?": "Sometimes",
+                        "Do they earn a high salary?": "Yes",
+                        "Do they work with animals?": "No",
+                        "Do they travel for work?": "Sometimes",
+                        "Do they work outdoors?": "No",
+                        "Do they create things?": "No",
+                        "Do they use specialized tools?": "Yes",
+                        "Do they work with the public?": "Yes",
+                        "Is physical fitness important?": "Somewhat",
+                        "Do they work for the government?": "Sometimes",
+                        "Do they work with food?": "No",
+                        "Are they self-employed?": "Sometimes"
+                    },
+                    hint: "They help people feel better"
+                },
+                {
+                    name: "Teacher",
+                    answers: {
+                        "Do they work indoors?": "Yes",
+                        "Do they need a college degree?": "Yes",
+                        "Do they work with their hands?": "Sometimes",
+                        "Do they wear a uniform?": "No",
+                        "Do they work with technology?": "Yes",
+                        "Do they work with children?": "Yes",
+                        "Is their job dangerous?": "No",
+                        "Do they work in teams?": "Yes",
+                        "Do they need special certification?": "Yes",
+                        "Do they work nights?": "Sometimes",
+                        "Do they earn a high salary?": "No",
+                        "Do they work with animals?": "No",
+                        "Do they travel for work?": "Rarely",
+                        "Do they work outdoors?": "Sometimes",
+                        "Do they create things?": "Yes",
+                        "Do they use specialized tools?": "Sometimes",
+                        "Do they work with the public?": "Yes",
+                        "Is physical fitness important?": "No",
+                        "Do they work for the government?": "Often",
+                        "Do they work with food?": "No",
+                        "Are they self-employed?": "Rarely"
+                    },
+                    hint: "They help others learn"
+                },
+                {
+                    name: "Chef",
+                    answers: {
+                        "Do they work indoors?": "Yes",
+                        "Do they need a college degree?": "No",
+                        "Do they work with their hands?": "Yes",
+                        "Do they wear a uniform?": "Yes",
+                        "Do they work with technology?": "Sometimes",
+                        "Do they work with children?": "No",
+                        "Is their job dangerous?": "Somewhat",
+                        "Do they work in teams?": "Yes",
+                        "Do they need special certification?": "Sometimes",
+                        "Do they work nights?": "Often",
+                        "Do they earn a high salary?": "Varies",
+                        "Do they work with animals?": "No",
+                        "Do they travel for work?": "Sometimes",
+                        "Do they work outdoors?": "Rarely",
+                        "Do they create things?": "Yes",
+                        "Do they use specialized tools?": "Yes",
+                        "Do they work with the public?": "Sometimes",
+                        "Is physical fitness important?": "Yes",
+                        "Do they work for the government?": "Rarely",
+                        "Do they work with food?": "Yes",
+                        "Are they self-employed?": "Sometimes"
+                    },
+                    hint: "They create delicious dishes"
+                },
+                {
+                    name: "Firefighter",
+                    answers: {
+                        "Do they work indoors?": "Sometimes",
+                        "Do they need a college degree?": "No",
+                        "Do they work with their hands?": "Yes",
+                        "Do they wear a uniform?": "Yes",
+                        "Do they work with technology?": "Yes",
+                        "Do they work with children?": "Sometimes",
+                        "Is their job dangerous?": "Yes",
+                        "Do they work in teams?": "Yes",
+                        "Do they need special certification?": "Yes",
+                        "Do they work nights?": "Yes",
+                        "Do they earn a high salary?": "Moderate",
+                        "Do they work with animals?": "Sometimes",
+                        "Do they travel for work?": "No",
+                        "Do they work outdoors?": "Yes",
+                        "Do they create things?": "No",
+                        "Do they use specialized tools?": "Yes",
+                        "Do they work with the public?": "Yes",
+                        "Is physical fitness important?": "Very",
+                        "Do they work for the government?": "Yes",
+                        "Do they work with food?": "No",
+                        "Are they self-employed?": "No"
+                    },
+                    hint: "They respond to emergencies"
+                },
+                {
+                    name: "Programmer",
+                    answers: {
+                        "Do they work indoors?": "Yes",
+                        "Do they need a college degree?": "Often",
+                        "Do they work with their hands?": "Yes",
+                        "Do they wear a uniform?": "No",
+                        "Do they work with technology?": "Yes",
+                        "Do they work with children?": "No",
+                        "Is their job dangerous?": "No",
+                        "Do they work in teams?": "Often",
+                        "Do they need special certification?": "Sometimes",
+                        "Do they work nights?": "Sometimes",
+                        "Do they earn a high salary?": "Often",
+                        "Do they work with animals?": "No",
+                        "Do they travel for work?": "Sometimes",
+                        "Do they work outdoors?": "Rarely",
+                        "Do they create things?": "Yes",
+                        "Do they use specialized tools?": "Yes",
+                        "Do they work with the public?": "Rarely",
+                        "Is physical fitness important?": "No",
+                        "Do they work for the government?": "Sometimes",
+                        "Do they work with food?": "No",
+                        "Are they self-employed?": "Sometimes"
+                    },
+                    hint: "They write code"
+                },
+                {
+                    name: "Pilot",
+                    answers: {
+                        "Do they work indoors?": "Partly",
+                        "Do they need a college degree?": "Often",
+                        "Do they work with their hands?": "Yes",
+                        "Do they wear a uniform?": "Yes",
+                        "Do they work with technology?": "Yes",
+                        "Do they work with children?": "No",
+                        "Is their job dangerous?": "Can be",
+                        "Do they work in teams?": "Yes",
+                        "Do they need special certification?": "Yes",
+                        "Do they work nights?": "Yes",
+                        "Do they earn a high salary?": "Yes",
+                        "Do they work with animals?": "No",
+                        "Do they travel for work?": "Yes",
+                        "Do they work outdoors?": "No",
+                        "Do they create things?": "No",
+                        "Do they use specialized tools?": "Yes",
+                        "Do they work with the public?": "Yes",
+                        "Is physical fitness important?": "Yes",
+                        "Do they work for the government?": "Sometimes",
+                        "Do they work with food?": "No",
+                        "Are they self-employed?": "Rarely"
+                    },
+                    hint: "They transport people through the air"
+                },
+                {
+                    name: "Lawyer",
+                    answers: {
+                        "Do they work indoors?": "Yes",
+                        "Do they need a college degree?": "Yes",
+                        "Do they work with their hands?": "No",
+                        "Do they wear a uniform?": "Sometimes",
+                        "Do they work with technology?": "Yes",
+                        "Do they work with children?": "Sometimes",
+                        "Is their job dangerous?": "Rarely",
+                        "Do they work in teams?": "Sometimes",
+                        "Do they need special certification?": "Yes",
+                        "Do they work nights?": "Sometimes",
+                        "Do they earn a high salary?": "Often",
+                        "Do they work with animals?": "No",
+                        "Do they travel for work?": "Sometimes",
+                        "Do they work outdoors?": "No",
+                        "Do they create things?": "No",
+                        "Do they use specialized tools?": "No",
+                        "Do they work with the public?": "Yes",
+                        "Is physical fitness important?": "No",
+                        "Do they work for the government?": "Sometimes",
+                        "Do they work with food?": "No",
+                        "Are they self-employed?": "Sometimes"
+                    },
+                    hint: "They represent clients in legal matters"
+                }
+            ];
+            
+            let currentOccupation;
+            let selectedQuestions = 0;
+            let selectedQuestionIds = [];
+            let gameOver = false;
+            
+            // Generate all questions
+            const questions = [
+                "Do they work indoors?",
+                "Do they need a college degree?",
+                "Do they work with their hands?",
+                "Do they wear a uniform?",
+                "Do they work with technology?",
+                "Do they work with children?",
+                "Is their job dangerous?",
+                "Do they work in teams?",
+                "Do they need special certification?",
+                "Do they work nights?",
+                "Do they earn a high salary?",
+                "Do they work with animals?",
+                "Do they travel for work?",
+                "Do they work outdoors?",
+                "Do they create things?",
+                "Do they use specialized tools?",
+                "Do they work with the public?",
+                "Is physical fitness important?",
+                "Do they work for the government?",
+                "Do they work with food?",
+                "Are they self-employed?"
+            ];
+            
+            function showToast(message) {
+                // Check if a toast already exists and remove it
+                const existingToast = document.querySelector('.toast-message');
+                if (existingToast) {
+                    existingToast.remove();
+                }
+                
+                // Create toast element
+                const toast = document.createElement('div');
+                toast.className = 'toast-message fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg z-50 fade-in';
+                toast.textContent = message;
+                
+                // Add to body
+                document.body.appendChild(toast);
+                
+                // Remove after 2 seconds
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 2000);
+            }
+            
+            // Navigation functions
+            function showHomePage() {
+                document.getElementById('home-page').classList.remove('hidden');
+                document.getElementById('game-page').classList.add('hidden');
+            }
+            
+            function showGamePage() {
+                document.getElementById('home-page').classList.add('hidden');
+                document.getElementById('game-page').classList.remove('hidden');
+                initGame();
+            }
+            
+            function initGame() {
+                // Reset game state
+                selectedQuestions = 0;
+                selectedQuestionIds = [];
+                gameOver = false;
+                document.getElementById('selected-count').textContent = '0';
+                document.getElementById('result-container').classList.add('hidden');
+                document.getElementById('hint-container').classList.add('hidden');
+                
+                // Reset stars
+                document.querySelectorAll('.stars-container .star').forEach(star => {
+                    star.classList.remove('filled');
+                });
+                
+                // Choose a random occupation
+                currentOccupation = occupations[Math.floor(Math.random() * occupations.length)];
+                
+                // Generate question cards
+                const questionsContainer = document.getElementById('questions-container');
+                questionsContainer.innerHTML = '';
+                
+                questions.forEach((question, index) => {
+                    const cardContainer = document.createElement('div');
+                    cardContainer.className = 'card-container';
+                    cardContainer.dataset.id = index;
+                    
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    const cardFront = document.createElement('div');
+                    cardFront.className = 'card-front';
+                    cardFront.innerHTML = `
+                        <p class="font-medium text-gray-800 text-center card-text">${question}</p>
+                    `;
+                    
+                    const cardBack = document.createElement('div');
+                    cardBack.className = 'card-back';
+                    cardBack.innerHTML = `
+                        <div class="text-center">
+                            <p class="font-medium text-gray-800 mb-1 card-text">${question}</p>
+                            <p class="text-indigo-700 font-bold card-text">${currentOccupation.answers[question]}</p>
+                        </div>
+                    `;
+                    
+                    card.appendChild(cardFront);
+                    card.appendChild(cardBack);
+                    cardContainer.appendChild(card);
+                    
+                    cardContainer.addEventListener('click', () => {
+                        if (gameOver) return;
+                        
+                        // If already selected, do nothing
+                        if (selectedQuestionIds.includes(index)) return;
+                        
+                        // Select and flip
+                        card.classList.add('flipped');
+                        selectedQuestions++;
+                        selectedQuestionIds.push(index);
+                        
+                        // Add selected indicator
+                        const indicator = document.createElement('div');
+                        indicator.className = 'selected-indicator bg-indigo-600';
+                        indicator.textContent = selectedQuestions;
+                        cardFront.appendChild(indicator);
+                        
+                        // Update counter
+                        document.getElementById('selected-count').textContent = selectedQuestions;
+                        
+                        // Show hint after 7 questions
+                        if (selectedQuestions === 7) {
+                            showHint();
+                        }
+                        
+                        // Update potential stars
+                        updateStarDisplay();
+                    });
+                    
+                    questionsContainer.appendChild(cardContainer);
+                });
+                
+                // Reset input
+                document.getElementById('guess-input').value = '';
+            }
+            
+            function updateStarDisplay() {
+                const stars = document.querySelectorAll('.stars-container .star');
+                
+                // Clear all stars
+                stars.forEach(star => star.classList.remove('filled'));
+                
+                // Fill stars based on questions revealed
+                if (selectedQuestions <= 7) {
+                    stars[0].classList.add('filled');
+                    stars[1].classList.add('filled');
+                    stars[2].classList.add('filled');
+                } else if (selectedQuestions <= 14) {
+                    stars[0].classList.add('filled');
+                    stars[1].classList.add('filled');
+                } else {
+                    stars[0].classList.add('filled');
+                }
+            }
+            
+            function showHint() {
+                // Show hint
+                document.getElementById('hint-container').classList.remove('hidden');
+                document.getElementById('hint-text').textContent = currentOccupation.hint;
+            }
+            
+            function checkGuess() {
+                const guess = document.getElementById('guess-input').value.trim().toLowerCase();
+                const correctAnswer = currentOccupation.name.toLowerCase();
+                
+                const resultContainer = document.getElementById('result-container');
+                const resultText = document.getElementById('result-text');
+                
+                if (guess === correctAnswer) {
+                    resultText.textContent = `Correct! The occupation was ${currentOccupation.name}!`;
+                    resultText.className = 'text-xl font-bold text-green-600';
+                    
+                    // Play sound effect for correct answer
+                    playCorrectSound();
+                    
+                    // Create confetti animation
+                    createConfetti();
+                    
+                    // Show star rating
+                    showStarRating();
+                } else {
+                    resultText.textContent = `Sorry, the correct answer was ${currentOccupation.name}.`;
+                    resultText.className = 'text-xl font-bold text-red-600';
+                }
+                
+                resultContainer.classList.remove('hidden');
+                gameOver = true;
+            }
+            
+            function playCorrectSound() {
+                // Try to play the sound effect
+                try {
+                    const sound = document.getElementById('correct-sound');
+                    sound.currentTime = 0; // Reset to start
+                    sound.play().catch(error => {
+                        console.log("Audio couldn't play automatically:", error);
+                        // This is expected in many browsers that block autoplay
+                    });
+                } catch (error) {
+                    console.log("Error playing sound:", error);
+                }
+            }
+            
+            function showStarRating() {
+                const starRating = document.getElementById('star-rating');
+                const stars = starRating.querySelectorAll('.star');
+                
+                // Clear all stars first
+                stars.forEach(star => star.classList.remove('filled'));
+                
+                // Determine star rating based on questions revealed
+                let rating = 1; // Default 1 star
+                if (selectedQuestions <= 7) {
+                    rating = 3;
+                } else if (selectedQuestions <= 14) {
+                    rating = 2;
+                }
+                
+                // Fill stars with animation delay
+                for (let i = 0; i < rating; i++) {
+                    setTimeout(() => {
+                        stars[i].classList.add('filled');
+                    }, i * 300);
+                }
+            }
+            
+            function createConfetti() {
+                const container = document.body;
+                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+                
+                for (let i = 0; i < 100; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.width = Math.random() * 10 + 5 + 'px';
+                    confetti.style.height = Math.random() * 10 + 5 + 'px';
+                    confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
+                    confetti.style.animationDelay = Math.random() * 2 + 's';
+                    
+                    container.appendChild(confetti);
+                    
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }
+            }
+            
+            // Event listeners
+            document.getElementById('start-game').addEventListener('click', showGamePage);
+            document.getElementById('submit-guess').addEventListener('click', checkGuess);
+            document.getElementById('guess-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkGuess();
+            });
+            document.getElementById('play-again').addEventListener('click', initGame);
+            document.getElementById('back-to-home').addEventListener('click', showHomePage);
+            
+            // Start on home page
+            showHomePage();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'942bbbaa34d14a6c',t:'MTc0Nzc0MzA0OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
